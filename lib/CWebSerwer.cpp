@@ -32,10 +32,7 @@ void CWebSerwer::begin()
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 81);
 
-   // digitalWrite(LED_RED, 0);
-   // digitalWrite(LED_GREEN, 0);
-   // digitalWrite(LED_BLUE, 0);
-   clientConnected=0;
+    clientConnected=0;
 }
 
 void CWebSerwer::webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
@@ -79,7 +76,7 @@ void CWebSerwer::publikujStanSekcji(uint8_t stan)
 
 bool CWebSerwer::handleFileRead(String path){  // send the right file to the client (if it exists)
   Serial.println("handleFileRead: " + path);
-  if(path.endsWith("/")) path += "i.html";           // If a folder is requested, send the index file
+  if(path.endsWith("/")) path += "index.html";           // If a folder is requested, send the index file
   String jsString="";
   if(path.endsWith("ws.js"))
   {
