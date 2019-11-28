@@ -1,5 +1,11 @@
 #include <Arduino.h>
 #include <DRV8835MotorShield.h>
+#include <ESP8266WiFi.h>
+#include <WebSocketsServer.h>
+#include <ESP8266WebServer.h>
+#include <ESP8266mDNS.h>
+#include <CWebSerwer.h>
+
 
 /*
  * This example uses the DRV8835MotorShield library to drive each motor with the
@@ -14,9 +20,65 @@
 #define LF_PIN A0
 #define BUTTON_PIN 0
 
-
+CWebSerwer web;
 
 //DRV8835MotorShield motors;
+////////////// obsluga websocket
+
+void wse(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
+{
+  web.webSocketEvent(num,type,payload,length);
+  if(type==WStype_TEXT)
+  {
+    char* p = (char*)malloc(length+1);
+    memcpy(p,payload,length);
+    p[length]='\0';
+    DPRINT("webSocket TEXT: ");DPRINTLN(p);
+
+    DynamicJsonBuffer jsonBuffer;
+    JsonObject& root = jsonBuffer.parseObject(p);
+    if (!root.success()) 
+    {
+      Serial.println("parseObject() failed");
+      Serial.println(p);
+      free(p);
+      DPRINTLN("return");
+      return;
+    }
+
+    char* topic="";
+    char msg[200]="";
+    
+    for (auto kv : root) {
+       topic=(char*)kv.key;
+        DPRINT(topic);DPRINTLN("root[topic]=");//Serial.println(String(root[topic]));
+     /*   kv.value.prettyPrintTo(Serial); Serial.println(" # ");kv.value.printTo(Serial);*/
+       if(root[topic].is<const char*>())
+       {
+          DPRINTLN("msg char*");
+          strcpy(msg,(char*)kv.value.as<char*>());
+       }else 
+       { 
+        if(kv.value.is<JsonObject>())
+        {
+            DPRINTLN(" kv obj ");
+            root[topic].printTo(msg);
+            DPRINT("msg JSON: ");DPRINTLN(msg);
+        }else if(kv.value.is<JsonArray>())
+         {
+           DPRINTLN(" kv array ");
+         }else  if(kv.value.is<unsigned int>())
+         {
+          DPRINTLN(" kv uint ");
+          itoa ((uint8_t)kv.value.as<unsigned int>(), msg, 10);
+          }else {   DPRINTLN(" kv undef... ");   }
+       }
+       DPRINT(topic);DPRINT("=");DPRINTLN(msg);
+       parsujRozkaz(topic,msg);
+     }
+    free(p);
+  }
+}
 
 void setup()
 {
@@ -115,7 +177,9 @@ digitalWrite(LED_PIN,HIGH);
 
   // motors.setSpeeds(0,0);
 
-  
+  web.begin();
+  WebSocketsServer * webSocket=web.getWebSocket();
+  webSocket->onEvent(wse);
 }
 
 unsigned long ms=0;
@@ -214,7 +278,9 @@ void loop()
     Serial.println(s);
     if(led==LOW)led=HIGH;else led=LOW;
     //digitalWrite(LED_PIN,led);
+     web.sendWebSocket(s.c_str());
     ms=millis();
+    
   }
   // run M1 motor with positive speed
   
@@ -282,5 +348,8 @@ void loop()
   
   delay(500);
   */
+   
+  web.loop(czasLokalny, infoStr);
+  delay(5);
  loopTime=millis()-loopTimeStart;
 }
