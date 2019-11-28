@@ -192,15 +192,19 @@ int led=LOW;
 
 double Kp=4.0;
 double Kd=6;
+double dp=0;
+double dd=0;
 int lastError=0;
 int position=0;
+int16_t error=0;
+int16_t speedDifference=0;
 void lfTryb()
 {
    
 
   // Our "error" is how far we are away from the center of the line, which
   // corresponds to position 2500.
-  int16_t error = position - 512;
+  error = position - 512;
 
   // Get motor speed difference using proportional and derivative PID terms
   // (the integral term is generally not very useful for line following).
@@ -208,7 +212,8 @@ void lfTryb()
   // constant of 6, which should work decently for many Zumo motor choices.
   // You probably want to use trial and error to tune these constants for
   // your particular Zumo and line course.
-  int16_t speedDifference = error * Kp + Kd * (error - lastError);
+  dp=error*Kp;   dd= Kd * (error - lastError);
+  speedDifference = dp + dd;
 
   lastError = error;
 
@@ -275,6 +280,19 @@ void loop()
     s+=" LFinp: "+String(position)/*+" ["+String(lfMin)+", "+String(lfMax)+"]"*/;
     s+=" L: "+String(m1Speed)+", P: "+String(m2Speed)+", Kp: "+String(Kp)+", Kd: "+String(Kd);
     s+=" Tryb: "+String(tryb)+" err: "+lastError;
+        /*j.Kp=(getRndInt(0,300).toFixed(2))/10;
+        j.Kd=(getRndInt(0,300).toFixed(2))/10;
+        j.Vm=getRndInt(0,1024);
+        j.Pos=getRndInt(0,1024);
+        j.LE=getRndInt(0,1024);
+        j.E=getRndInt(0,1024);
+        j.dp=getRndInt(0,1024);
+        j.dd=getRndInt(0,1024);
+        j.sd=getRndInt(-1024,1024);
+        j.L=getRndInt(-1024,1024);
+        j.P=getRndInt(-1024,1024);
+        j.LT=getRndInt(0,1024);
+        j.T=getRndInt(0,2);*/
     Serial.println(s);
     if(led==LOW)led=HIGH;else led=LOW;
     //digitalWrite(LED_PIN,led);
