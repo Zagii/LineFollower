@@ -21,6 +21,24 @@
 #define BUTTON_PIN 0
 
 CWebSerwer web;
+unsigned long ms=0;
+unsigned long loopTime=0,loopTimeStart=0;
+int lfMax=0;
+int lfMin=1024;
+int mLSpeed=0;
+int mPSpeed=0;
+int led=LOW;
+
+int Vmax=MAX_SPEED;
+double Kp=4.0;
+double Kd=6;
+double dp=0;
+double dd=0;
+int lastError=0;
+int position=0;
+int16_t error=0;
+int16_t speedDifference=0;
+int tryb=1;
 
 //DRV8835MotorShield motors;
 ////////////// obsluga websocket
@@ -33,49 +51,28 @@ void wse(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
     char* p = (char*)malloc(length+1);
     memcpy(p,payload,length);
     p[length]='\0';
-    DPRINT("webSocket TEXT: ");DPRINTLN(p);
+    Serial.print("webSocket TEXT: ");Serial.println(p);
 
-    DynamicJsonBuffer jsonBuffer;
-    JsonObject& root = jsonBuffer.parseObject(p);
-    if (!root.success()) 
+  //  https://arduinojson.org/v6/assistant/
+  // mozliwe komunikaty
+    // {"Kp":float, "Kd":float, "Vm":int, "T":int, "L":int, "P":int}
+    //
+    
+    StaticJsonDocument<200> doc;
+    DeserializationError error = deserializeJson(doc, p);
+    if (error) 
     {
-      Serial.println("parseObject() failed");
-      Serial.println(p);
-      free(p);
-      DPRINTLN("return");
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
       return;
     }
-
-    char* topic="";
-    char msg[200]="";
-    
-    for (auto kv : root) {
-       topic=(char*)kv.key;
-        DPRINT(topic);DPRINTLN("root[topic]=");//Serial.println(String(root[topic]));
-     /*   kv.value.prettyPrintTo(Serial); Serial.println(" # ");kv.value.printTo(Serial);*/
-       if(root[topic].is<const char*>())
-       {
-          DPRINTLN("msg char*");
-          strcpy(msg,(char*)kv.value.as<char*>());
-       }else 
-       { 
-        if(kv.value.is<JsonObject>())
-        {
-            DPRINTLN(" kv obj ");
-            root[topic].printTo(msg);
-            DPRINT("msg JSON: ");DPRINTLN(msg);
-        }else if(kv.value.is<JsonArray>())
-         {
-           DPRINTLN(" kv array ");
-         }else  if(kv.value.is<unsigned int>())
-         {
-          DPRINTLN(" kv uint ");
-          itoa ((uint8_t)kv.value.as<unsigned int>(), msg, 10);
-          }else {   DPRINTLN(" kv undef... ");   }
-       }
-       DPRINT(topic);DPRINT("=");DPRINTLN(msg);
-       parsujRozkaz(topic,msg);
-     }
+    Kp = doc["Kp"]|Kp; // 123.32
+    Kd = doc["Kd"]|Kd; // 1234.564
+    Vmax = doc["Vm"]|Vmax; // -1024
+    tryb = doc["T"]|tryb; // 10
+    mLSpeed = doc["L"]|mLSpeed; // -1024
+    mPSpeed = doc["P"]|mPSpeed; // -1024
+     
     free(p);
   }
 }
@@ -89,6 +86,12 @@ void setup()
   pinMode(LF_PIN,INPUT_PULLUP);
   Serial.begin(115200);
   Serial.println("LineFollower start");  
+ 
+  Serial.print("Setting soft-AP ... ");
+  Serial.println(WiFi.softAP("KartiRobot") ? "Ready" : "Failed!");
+
+  Serial.print("Soft-AP IP address = ");
+  Serial.println(WiFi.softAPIP());
   // uncomment one or both of the following lines if your motors' directions need to be flipped
   
   //motors.flipM1(true);
@@ -182,22 +185,7 @@ digitalWrite(LED_PIN,HIGH);
   webSocket->onEvent(wse);
 }
 
-unsigned long ms=0;
-unsigned long loopTime=0,loopTimeStart=0;
-int lfMax=0;
-int lfMin=1024;
-int m1Speed=0;
-int m2Speed=0;
-int led=LOW;
 
-double Kp=4.0;
-double Kd=6;
-double dp=0;
-double dd=0;
-int lastError=0;
-int position=0;
-int16_t error=0;
-int16_t speedDifference=0;
 void lfTryb()
 {
    
@@ -219,25 +207,25 @@ void lfTryb()
 
   // Get individual motor speeds.  The sign of speedDifference
   // determines if the robot turns left or right.
-  m1Speed = MAX_SPEED - speedDifference;
-  m2Speed = MAX_SPEED + speedDifference;
+  mLSpeed = Vmax - speedDifference;
+  mPSpeed = Vmax + speedDifference;
 
   // Here we constrain our motor speeds to be between 0 and MAX_SPEED.
   // Generally speaking, one motor will always be turning at MAX_SPEED
   // and the other will be at MAX_SPEED-|speedDifference| if that is positive,
   // else it will be stationary.  For some applications, you might want to
   // allow the motor speed to go negative so that it can spin in reverse.
-  if (m1Speed < 0)
-    m1Speed = 0;
-  if (m2Speed < 0)
-    m2Speed = 0;
-  if (m1Speed > MAX_SPEED)
-    m1Speed = MAX_SPEED;
-  if (m2Speed > MAX_SPEED)
-    m2Speed = MAX_SPEED;
+  if (mLSpeed < 0)
+    mLSpeed = 0;
+  if (mPSpeed < 0)
+    mPSpeed = 0;
+  if (mLSpeed > Vmax)
+    mLSpeed = Vmax;
+  if (mPSpeed > Vmax)
+    mPSpeed = Vmax;
 
-analogWrite(D6, m1Speed);
-analogWrite(D8, m2Speed);
+analogWrite(D6, mLSpeed);
+analogWrite(D8, mPSpeed);
  // motors.setSpeeds(m1Speed, m2Speed);
 
 }
@@ -245,57 +233,77 @@ analogWrite(D8, m2Speed);
 #define STOP 0
 #define LF 1
 #define MANUAL 2
-int tryb=1;
+
 
 void loop()
 {
   loopTimeStart=millis();
   delay(1);
+  web.loop(czasLokalny, infoStr);
   position=analogRead(LF_PIN);
     if(position>lfMax)lfMax=position;
     if(position<lfMin)lfMin=position;
   
-  /*if(digitalRead(BUTTON_PIN)==LOW)
+  digitalWrite(LED_PIN,led);
+  //////////////// btn ///////////////////////
+  int i=0;
+  while(digitalRead(BUTTON_PIN)==LOW)
   {
-    delay(20);
-    if(digitalRead(BUTTON_PIN)==LOW)
+    delay(1);
+    i++;
+    if(i>20) break;
+  }
+  if(i>=20)
+  {
     tryb++;
     if(tryb>LF)tryb=STOP;
     //motors.setSpeeds(0,0);
-  }*/
+  }
+  ///////////////// btn /////////////////
   switch(tryb)
   {
     case STOP:
       //motors.setSpeeds(0,0);
+        analogWrite(D6, 0);
+        analogWrite(D8, 0);
       break;
     case LF:
       lfTryb();
     break;
     case MANUAL:
+      led=HIGH;
+      analogWrite(D6, mLSpeed);
+      analogWrite(D8, mPSpeed);
       break;
   }
-  if(millis()-ms>1000)
+  if(millis()-ms>300)
   {
-    String s="LoopTime: "+String(loopTime)+" ms";
-    s+=" LFinp: "+String(position)/*+" ["+String(lfMin)+", "+String(lfMax)+"]"*/;
+    /*String s="LoopTime: "+String(loopTime)+" ms";
+    s+=" LFinp: "+String(position)+" ["+String(lfMin)+", "+String(lfMax)+"]";
     s+=" L: "+String(m1Speed)+", P: "+String(m2Speed)+", Kp: "+String(Kp)+", Kd: "+String(Kd);
-    s+=" Tryb: "+String(tryb)+" err: "+lastError;
-        /*j.Kp=(getRndInt(0,300).toFixed(2))/10;
-        j.Kd=(getRndInt(0,300).toFixed(2))/10;
-        j.Vm=getRndInt(0,1024);
-        j.Pos=getRndInt(0,1024);
-        j.LE=getRndInt(0,1024);
-        j.E=getRndInt(0,1024);
-        j.dp=getRndInt(0,1024);
-        j.dd=getRndInt(0,1024);
-        j.sd=getRndInt(-1024,1024);
-        j.L=getRndInt(-1024,1024);
-        j.P=getRndInt(-1024,1024);
-        j.LT=getRndInt(0,1024);
-        j.T=getRndInt(0,2);*/
+    s+=" Tryb: "+String(tryb)+" err: "+lastError;*/
+    
+    const size_t capacity = JSON_OBJECT_SIZE(13);
+    DynamicJsonDocument doc(capacity);
+      //{"Kp":18.5,"Kd":2.4,"Vm":724,"Pos":277,"LE":170,"E":38,"dp":89,"dd":706,"sd":4,"L":122,"P":-849,"LT":481,"T":1}
+    doc["Kp"] = Kp;
+    doc["Kd"] = Kd;
+    doc["Vm"] = Vmax;
+    doc["Pos"] = position;
+    doc["LE"] = laseError;
+    doc["E"] = error;
+    doc["dp"] = dp;
+    doc["dd"] = dd;
+    doc["sd"] = speedDifference;
+    doc["L"] = mLSpeed;
+    doc["P"] = mPSpeed;
+    doc["LT"] = loopTime;
+    doc["T"] = tryb;
+
+    serializeJson(doc, s);
     Serial.println(s);
     if(led==LOW)led=HIGH;else led=LOW;
-    //digitalWrite(LED_PIN,led);
+  
      web.sendWebSocket(s.c_str());
     ms=millis();
     
@@ -366,8 +374,5 @@ void loop()
   
   delay(500);
   */
-   
-  web.loop(czasLokalny, infoStr);
-  delay(5);
  loopTime=millis()-loopTimeStart;
 }
