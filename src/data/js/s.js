@@ -8,7 +8,7 @@ let globalLastSendMsgMS=0;
     {
         console.log("DC");
         document.getElementById("plugm").style.color="darkred";
-        delete W; 
+       // delete W; 
     };
     const msg=function(j)
     {

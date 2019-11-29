@@ -6,34 +6,9 @@ class global
 {
     constructor()
     {
-        this.dTyg=["Niedziela","Poniedziałek","Wtorek","Środa","Czwarek","Piątek","Sobota"];
-        this.sLbl=["","","","","","","","","",""];
-        this.dt=new Date();   
+        
     }
-    getDzien(i){return this.dTyg[i];}
-    setLbl(i,s){this.sLbl[i]=s;}
-    getLbl(i){return this.sLbl[i];}
-    setCzasS(mSek)
-    {
-        this.dt.setTime(mSek*1000);
-    }
-	setCzas(mSek)
-    {
-        this.dt.setTime(mSek);//*1000);
-    }
-    getGodz(){
-        return  this.dt.getUTCHours().toString().padStart(2,"0")+":"+
-        this.dt.getUTCMinutes().toString().padStart(2,"0")+":"+
-        this.dt.getUTCSeconds().toString().padStart(2,"0");       
-    }
-    getDtStr()
-    {
-        return  this.dt.getUTCDate().toString().padStart(2,"0")+"-"+
-                ( this.dt.getUTCMonth()+1).toString().padStart(2,"0")+"-"+
-                this.dt.getUTCFullYear();
-    }
-    getDTyg() {return dTyg[dt.getUTCDay()];}
-
+    
     static isValidElement(e){return e.name && e.value;}
     static isValidValue(e){ return (!['checkbox', 'radio'].includes(e.type) || e.checked);}
     static isCheckbox(e){return e.type === 'checkbox';}
@@ -89,6 +64,7 @@ class wsConn
         this.fCon=fCon.bind(this);
         this.fDc=fDc.bind(this);
         this.fMsg=fMsg.bind(this);
+        this.timeout=250;
         
     }
     begin(d)
@@ -97,27 +73,8 @@ class wsConn
     }
     checkWS()
     {
-      //  console.log("checkWS");
-    /*    if(this.ws)
-        {
-            if(this.ws.readyState == WebSocket.CLOSED)
-            {          
-                this.startWS();
-            }else
-            {
-                if(this.ws.readyState==WebSocket.OPEN)
-                {
-                } else
-                {
-                }
-            }
-        
-        }else
-        {*/
-         this.startWS();
-        //}
+        this.startWS();
         return this.ws.readyState;
-       
     }
     startWS()
     {
@@ -132,6 +89,12 @@ class wsConn
             this.send(JSON.stringify(j));
             me.fCon();
         };
+        this.ws.onclose = function(e) {
+            console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
+            setTimeout(function() {
+                startWS();
+            }, Math.min(10000,timeout+=timeout)); //zwieksza po czasie timeout
+          };
         this.ws.onerror = function (error) 
         { 
             console.log('WebSocket Error ', error); 
@@ -167,10 +130,7 @@ class wsConn
         let t="{\"t\":\""+new Date().toISOString()+"\"}";
         this.send(t);
     }
-    getSekLbl()
-    {
-        this.send("{\"GET\":\"SLBL\"}");
-    }
+
     getProgs()
     {
         this.send("{\"GET\":\"PROG\"}");
@@ -179,10 +139,7 @@ class wsConn
     {
         this.send("{\"GET\":\"KONF\"}");
     }
-    getStats()
-    {
-        this.send("{\"GET\":\"STAT\"}");
-    }
+ 
 }
 
 
