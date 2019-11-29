@@ -14,6 +14,7 @@ let globalLastSendMsgMS=0;
     {
         console.log(j);
         document.getElementById("footerTxt").innerHTML=JSON.stringify(j);
+        console.log(JSON.stringify(j));
         //render Kp
         let v="";
         if (j.hasOwnProperty("Kp")) 
@@ -163,14 +164,17 @@ let globalLastSendMsgMS=0;
         G=new global();
       //  W.begin(3); << i to też 
       generatorTestowychKomunikatow();
-      setInterval(generatorTestowychKomunikatow,1000) ;    
+      setInterval(generatorTestowychKomunikatow,10000) ;    
       
+  
       var joystickView = new JoystickView(200, function(callbackView){
         $("#joystickContent").append(callbackView.render().el);
         setTimeout(function(){
             callbackView.renderSprite();
         }, 0);
+
     });
+
     joystickView.bind("verticalMove", function(y){
         $("#yVal").html(y);
       // joyChg(x,y);
@@ -213,38 +217,53 @@ let globalLastSendMsgMS=0;
             case "buttKpPlus":
                 co="Kp";
                 wart=parseFloat(document.getElementById("divLFKp").innerHTML)+0.5;
+                msg.Kp=wart;
                 break;
             case "buttKpMinus":
                 co="Kp";
                 wart=parseFloat(document.getElementById("divLFKp").innerHTML)-0.5;
+                msg.Kp=wart;
                 break;
             case "buttKpSend":
                 co="Kp";
                 wart=parseFloat(document.getElementById("inpKp").value);
+                msg.Kp=wart;
                 break;
             case "buttKdPlus":
                 co="Kd";
                 wart=parseFloat(document.getElementById("divLFKd").innerHTML)+0.5;
+                msg.Kd=wart;
                 break;
             case "buttKdMinus":
                 co="Kd";
                 wart=parseFloat(document.getElementById("divLFKd").innerHTML)-0.5;
+                msg.Kd=wart;
                 break;
             case "buttKdSend":
                 co="Kd";    
                 wart=parseFloat(document.getElementById("inpKd").value);
+                msg.Kd=wart;
                 break;
             case "buttVmPlus":
                 co="Vm";
                 wart=parseInt(document.getElementById("divLFVm2").innerHTML)+50;
+                msg.Vm=wart;
                 break;
             case "buttVmMinus":
                 co="Vm";
                 wart=parseInt(document.getElementById("divLFVm2").innerHTML)-50;
+                msg.Vm=wart;
+                break;
+            case 'divLFPslider':
+                  msg.P=parseInt(document.getElementById("divLFPslider").value);
+                break;
+            case 'divLFLslider':
+                  msg.L=parseInt(document.getElementById("divLFLslider").value);
                 break;
             case "buttVmSend":
                 co="Vm";
                 wart=parseInt(document.getElementById("inpVm").value);
+                msg.Vm=wart;
                 break;
             case "buttStartStop":
                 co="T";
@@ -252,6 +271,7 @@ let globalLastSendMsgMS=0;
                    { wart=1;}
                     else 
                     {wart=0;}
+                msg.T=wart;
                 break;
             case "joystick":
                 co="R";
@@ -265,9 +285,14 @@ let globalLastSendMsgMS=0;
         if(teraz-globalLastSendMsgMS>300) 
         {
             globalLastSendMsgMS=teraz;
-            msg.c=co;
-            if(co!='R') msg.v=wart;
-
+           /* msg.c=co;
+            if(co!='R') 
+            {
+                if(co=="Kp"||co=="Kd")
+                    msg.f=wart;
+                else msg.i=wart;
+            }
+            */
             console.log("sendStan msg="+JSON.stringify(msg) );
             document.getElementById("footerTxt").innerHTML=JSON.stringify(msg);
     //    W.send(msg);   
