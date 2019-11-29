@@ -179,7 +179,7 @@ a:hover {
           <br><br><br>
           <div class="containerPB" style="margin-left: 0px;">
           
-            <input id="divLFLslider" class="range vertical-heighest-first round" type="range" min="-1024" max="1024" step="1" value="1" disabled="disabled">
+            <input id="divLFLslider" oninput="sendStan(divLFLslider)" class="range vertical-heighest-first round" type="range" min="-1024" max="1024" step="1" value="0" >
             
           </div>
         
@@ -198,7 +198,7 @@ a:hover {
           <div>Prawy: <span id="divLFP2"> 1234</span></div>
           <br><br><br>
           <div class="containerPB w3-section" style="margin-left: 0px">  
-            <input id="divLFPslider" class="range vertical-heighest-first round" type="range" min="-1024" max="1024" step="1" value="1" disabled="disabled">
+            <input id="divLFPslider" oninput="sendStan(divLFPslider)" class="range vertical-heighest-first round" type="range" min="-1024" max="1024" step="1" value="0" >
           </div>
         </div>
       </div>
