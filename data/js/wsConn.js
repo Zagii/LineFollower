@@ -1,6 +1,6 @@
 var W;
 var G;
-var wsSerw;//="192.168.43.144"
+var wsSerwTest="192.168.43.28";
 
 class global
 {
@@ -69,18 +69,22 @@ class wsConn
     }
     begin(d)
     {
-        setInterval(this.checkWS.bind(this), d*1000);
+        //setInterval(this.checkWS.bind(this), d*1000);
+		 setTimeout(this.checkWS.bind(this),d*1000);
     }
     checkWS()
     {
-        this.startWS();
+        this.startWS();//.bind(this);
         return this.ws.readyState;
     }
     startWS()
     {
         if(this.ws){ if(this.ws.readyState==WebSocket.OPEN) return; }
         console.log("startWS");
-        this.ws = new WebSocket('ws://'+wsSerw+':81/'); 
+		if(this.ws) {delete this.ws;}
+		let mywsSerw=wsSerwTest;
+		if (typeof wsSerw !== 'undefined') {mywsSerw=wsSerw;}
+        this.ws = new WebSocket('ws://'+mywsSerw+':81/'); 
       //  this.ws =new WebSocket("wss://echo.websocket.org/");
         let me=this;
         this.ws.onopen = function () 
@@ -92,14 +96,14 @@ class wsConn
         this.ws.onclose = function(e) {
             console.log('Socket is closed. Reconnect will be attempted in 1 second.', e.reason);
             setTimeout(function() {
-                startWS();
-            }, Math.min(10000,timeout+=timeout)); //zwieksza po czasie timeout
+                me.startWS();//.bind(this);
+            }, Math.min(10000,this.timeout+=this.timeout)); //zwieksza po czasie timeout
           };
         this.ws.onerror = function (error) 
         { 
             console.log('WebSocket Error ', error); 
-            ws.close();
-            delete this.ws; 
+           if(this.ws) this.ws.close();
+           // delete this.ws; 
             me.fDc();
 	    }; 
         this.ws.onmessage = function (e) 

@@ -21,7 +21,7 @@ let globalLastSendMsgMS=0;
         {
             v=j.Kp;
             document.getElementById("divLFtytKp").innerHTML=v;
-            document.getElementById("inpKp").value=v;
+            //document.getElementById("inpKp").value=v;
             document.getElementById("divLFKp").innerHTML=v;
         }
         //render Kd
@@ -29,7 +29,7 @@ let globalLastSendMsgMS=0;
         {
             v=j.Kd;
             document.getElementById("divLFtytKd").innerHTML=v;
-            document.getElementById("inpKd").value=v;
+            //document.getElementById("inpKd").value=v;
             document.getElementById("divLFKd").innerHTML=v;
         }
         //render Vmax
@@ -37,7 +37,7 @@ let globalLastSendMsgMS=0;
         {
             v=j.Vm;
             document.getElementById("divLFtytVm").innerHTML=v;
-            document.getElementById("inpVm").value=v;
+            //document.getElementById("inpVm").value=v;
             document.getElementById("divLFVm2").innerHTML=v;
         }
         //render position
@@ -117,6 +117,7 @@ let globalLastSendMsgMS=0;
                    document.getElementById("faStartStop").className="fa fa-play fa-4x"; 
                    break;
                 case 1:
+				case 2:
                    document.getElementById("faStartStop").style.color="darkred";
                    document.getElementById("faStartStop").className="fa fa-stop fa-4x";  
                    break;
@@ -160,11 +161,11 @@ let globalLastSendMsgMS=0;
         
         debug=document.getElementById('deb');
         console.log("document On load");
-      //  W=new wsConn(con,dc,msg); <<< tu połączenie zakomentoweamlem
+        W=new wsConn(con,dc,msg); 
         G=new global();
-      //  W.begin(3); << i to też 
+        W.begin(3); 
       generatorTestowychKomunikatow();
-      setInterval(generatorTestowychKomunikatow,10000) ;    
+      //setInterval(generatorTestowychKomunikatow,10000) ;    
       
   
       var joystickView = new JoystickView(200, function(callbackView){
@@ -256,9 +257,11 @@ let globalLastSendMsgMS=0;
                 break;
             case 'divLFPslider':
                   msg.P=parseInt(document.getElementById("divLFPslider").value);
+				  msg.T=2;
                 break;
             case 'divLFLslider':
                   msg.L=parseInt(document.getElementById("divLFLslider").value);
+				  msg.T=2;
                 break;
             case "buttVmSend":
                 co="Vm";
@@ -278,6 +281,7 @@ let globalLastSendMsgMS=0;
                 wart=null;                
                 msg.L=parseInt(nr.L);
                 msg.P=parseInt(nr.P);
+				msg.T=2;
                 break;   
         }
 
@@ -295,7 +299,7 @@ let globalLastSendMsgMS=0;
             */
             console.log("sendStan msg="+JSON.stringify(msg) );
             document.getElementById("footerTxt").innerHTML=JSON.stringify(msg);
-    //    W.send(msg);   
+        W.send(JSON.stringify(msg));   
         }
     }
     function trybSwitch()

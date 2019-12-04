@@ -1,19 +1,67 @@
 #include "CWebSerwer.h"
 
 
+void webSocketEvent1(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
+{
+  USE_SERIAL.printf("def CWebSerwer::webSocketEvent1");
+        
+}
 
+#define APDEF
 void CWebSerwer::begin()
 {
 //  server= new ESP8266WebServer(80);
-  webSocket = new WebSocketsServer(81);
-   webSocket->begin();
-   //webSocket->onEvent(webSocketEvent);
 
-    if(MDNS.begin("podlewacz")) {
+#ifdef APDEF
+  WiFi.mode(WIFI_AP);
+  Serial.print("Setting soft-AP ... ");
+  Serial.println(WiFi.softAP("KartiRobot") ? "Ready" : "Failed!");
+
+  Serial.print("Soft-AP IP address = ");
+  Serial.println(WiFi.softAPIP());
+  delay(500);
+  #else
+  WiFi.mode(WIFI_STA);
+  Serial.print("Connecting to: ");Serial.println(_ssid);
+  WiFi.begin(_ssid, _password);
+
+  //check wi-fi is connected to wi-fi network
+  int i=0;
+  while (WiFi.status() != WL_CONNECTED) 
+  {
+    delay(500); Serial.print(".");
+    i++; 
+  
+    Serial.print("WiFi status = ");
+    String s="";
+    switch(WiFi.status())
+    {
+      case WL_NO_SHIELD: break;
+      case WL_NO_SSID_AVAIL: s="no ap found"; break;
+      case WL_IDLE_STATUS: s="idle"; break;
+      case WL_SCAN_COMPLETED: s="scan complete";break;
+      case WL_CONNECTED: s="connected"; break;
+      case WL_CONNECT_FAILED: s="connect fail"; break;
+      case WL_CONNECTION_LOST: s="connection lost";break;
+      case WL_DISCONNECTED : s="disconnected";break;
+          
+    }
+    
+    Serial.println( s);
+    Serial.print("Got IP: ");  Serial.println(WiFi.localIP());
+    if(i==15)break;
+  }
+#endif
+  server.begin(80);
+  webSocket = new WebSocketsServer(81);
+  webSocket->begin();
+  // webSocket->onEvent(webSocketEvent1);
+
+    if(MDNS.begin("karti")) {
         USE_SERIAL.println("MDNS responder started");
     }
 
-  //SPIFFS.begin();    
+  SPIFFS.begin();    
 
   server.onNotFound([this]() {                              // If the client requests any URI
     if (!handleFileRead(server.uri()))                  // send it if it exists
@@ -26,8 +74,8 @@ void CWebSerwer::begin()
         server.send(200, "text/html", "<html><head><script>var connection = new WebSocket('ws://'+location.hostname+':81/', ['arduino']);connection.onopen = function () {  connection.send('Connect ' + new Date()); }; connection.onerror = function (error) {    console.log('WebSocket Error ', error);};connection.onmessage = function (e) {  console.log('Server: ', e.data);};function sendRGB() {  var r = parseInt(document.getElementById('r').value).toString(16);  var g = parseInt(document.getElementById('g').value).toString(16);  var b = parseInt(document.getElementById('b').value).toString(16);  if(r.length < 2) { r = '0' + r; }   if(g.length < 2) { g = '0' + g; }   if(b.length < 2) { b = '0' + b; }   var rgb = '#'+r+g+b;    console.log('RGB: ' + rgb); connection.send(rgb); }</script></head><body>LED Control:<br/><br/>R: <input id=\"r\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>G: <input id=\"g\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/>B: <input id=\"b\" type=\"range\" min=\"0\" max=\"255\" step=\"1\" oninput=\"sendRGB();\" /><br/></body></html>");
     });
 */
-    server.begin();
-
+ 
+  
     // Add service to MDNS
     MDNS.addService("http", "tcp", 80);
     MDNS.addService("ws", "tcp", 81);
@@ -35,25 +83,31 @@ void CWebSerwer::begin()
     clientConnected=0;
 }
 
+
 void CWebSerwer::webSocketEvent(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
 {
 
-    switch(type) {
+    switch(type) 
+    {
         case WStype_DISCONNECTED:
             USE_SERIAL.printf("[%u] Disconnected!\n", num);
             clientConnected--;
             break;
-        case WStype_CONNECTED: {
-            IPAddress ip = webSocket->remoteIP(num);
-            USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
-            clientConnected++;
-            // send message to client
-            webSocket->sendTXT(num, "{\"STATUS\":\"Connected\"}");
-        }
+        case WStype_CONNECTED: 
+            {
+              IPAddress ip = webSocket->remoteIP(num);
+              USE_SERIAL.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
+              clientConnected++;
+              // send message to client
+              webSocket->sendTXT(num, "{\"STATUS\":\"Connected\"}");
+            }
             break;
         case WStype_TEXT:
             USE_SERIAL.printf("[%u] get Text: %s\n", num, payload);
 
+            break;
+        default:
+            USE_SERIAL.printf("def CWebSerwer::webSocketEvent");
             break;
     }
 
@@ -63,7 +117,7 @@ void CWebSerwer::publikujStanSekcji(uint8_t stan)
 {
  // if(stan==stanSekcji)return;
  // stanSekcji=stan;
- if(clientConnected<=0)return;
+ /*if(clientConnected<=0)return;
   
   DynamicJsonBuffer jsonBuffer;
   String jsStr="";
@@ -71,7 +125,7 @@ void CWebSerwer::publikujStanSekcji(uint8_t stan)
   root["SEKCJE"]=stan;
   root.printTo(jsStr); 
   webSocket->broadcastTXT(jsStr);
-  
+  */ 
 }
 
 bool CWebSerwer::handleFileRead(String path){  // send the right file to the client (if it exists)
@@ -80,7 +134,14 @@ bool CWebSerwer::handleFileRead(String path){  // send the right file to the cli
   String jsString="";
   if(path.endsWith("ws.js"))
   {
-    jsString="var wsSerw=\""+WiFi.localIP().toString()+"\";";
+    String ipStr="";
+    #ifdef APDEF
+    ipStr=WiFi.softAPIP().toString();
+    #else
+     ipStr=WiFi.localIP().toString();
+    #endif
+    
+    jsString="var wsSerw=\""+ipStr+"\";";
   }
   String contentType = getContentType(path);             // Get the MIME type
   String pathWithGz = path + ".gz";
@@ -132,17 +193,17 @@ String CWebSerwer::getContentType(String filename){
 void CWebSerwer::loop(unsigned long t_s, String infoStr)
 {
    webSocket->loop();
-   yield();
+   delay(1);
    server.handleClient();
-   yield();
+   delay(1);
 
    //return; //////////////////////////////<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<    debug tylko 
    //if(clientConnected<=0)return;
-   if(ostatnioWyslanyCzas_s!=t_s)
-   {
-     ostatnioWyslanyCzas_s=t_s;
-     webSocket->broadcastTXT(infoStr);
-   }
+  // if(ostatnioWyslanyCzas_s!=t_s)
+  // {
+   //  ostatnioWyslanyCzas_s=t_s;
+    // webSocket->broadcastTXT(infoStr);
+  // }
    
 }
 

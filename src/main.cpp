@@ -1,10 +1,11 @@
 #include <Arduino.h>
 #include <DRV8835MotorShield.h>
 #include <ESP8266WiFi.h>
-#include <WebSocketsServer.h>
+//#include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
 #include <CWebSerwer.h>
+#include <ArduinoJson.h>
 
 
 /*
@@ -77,6 +78,8 @@ void wse(uint8_t num, WStype_t type, uint8_t * payload, size_t length)
   }
 }
 
+
+
 void setup()
 {
   //motors.setSpeeds(0,0);
@@ -87,11 +90,10 @@ void setup()
   Serial.begin(115200);
   Serial.println("LineFollower start");  
  
-  Serial.print("Setting soft-AP ... ");
-  Serial.println(WiFi.softAP("KartiRobot") ? "Ready" : "Failed!");
+  web.begin();
+  WebSocketsServer * webSocket=web.getWebSocket();
+  webSocket->onEvent(wse);
 
-  Serial.print("Soft-AP IP address = ");
-  Serial.println(WiFi.softAPIP());
   // uncomment one or both of the following lines if your motors' directions need to be flipped
   
   //motors.flipM1(true);
@@ -180,10 +182,7 @@ digitalWrite(LED_PIN,HIGH);
 
   // motors.setSpeeds(0,0);
 
-  web.begin();
-  WebSocketsServer * webSocket=web.getWebSocket();
-  webSocket->onEvent(wse);
-}
+  }
 
 
 void lfTryb()
@@ -238,8 +237,8 @@ analogWrite(D8, mPSpeed);
 void loop()
 {
   loopTimeStart=millis();
-  delay(1);
-  web.loop(czasLokalny, infoStr);
+ // delay(1);
+  web.loop(millis(), "");
   position=analogRead(LF_PIN);
     if(position>lfMax)lfMax=position;
     if(position<lfMin)lfMin=position;
@@ -264,6 +263,8 @@ void loop()
   {
     case STOP:
       //motors.setSpeeds(0,0);
+        mLSpeed=0;
+        mPSpeed=0;
         analogWrite(D6, 0);
         analogWrite(D8, 0);
       break;
@@ -276,7 +277,7 @@ void loop()
       analogWrite(D8, mPSpeed);
       break;
   }
-  if(millis()-ms>300)
+  if(millis()-ms>350)
   {
     /*String s="LoopTime: "+String(loopTime)+" ms";
     s+=" LFinp: "+String(position)+" ["+String(lfMin)+", "+String(lfMax)+"]";
@@ -290,7 +291,7 @@ void loop()
     doc["Kd"] = Kd;
     doc["Vm"] = Vmax;
     doc["Pos"] = position;
-    doc["LE"] = laseError;
+    doc["LE"] = lastError;
     doc["E"] = error;
     doc["dp"] = dp;
     doc["dd"] = dd;
@@ -300,8 +301,9 @@ void loop()
     doc["LT"] = loopTime;
     doc["T"] = tryb;
 
+    String s="";
     serializeJson(doc, s);
-    Serial.println(s);
+    //Serial.println(s);
     if(led==LOW)led=HIGH;else led=LOW;
   
      web.sendWebSocket(s.c_str());

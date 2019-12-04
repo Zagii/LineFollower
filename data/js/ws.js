@@ -1,0 +1,1 @@
+//ten plik jest pusty bo w nim zapisuje sie adres przy req strony

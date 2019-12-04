@@ -4,8 +4,8 @@
 #include <WebSocketsServer.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
-#include <Time.h>
-#include <TimeLib.h>
+//#include <Time.h>
+//#include <TimeLib.h>
 #include "FS.h"
 
 #define USE_SERIAL Serial
@@ -13,7 +13,8 @@
 
 class CWebSerwer
 {
-  
+    const char* _ssid = "DOrangeFreeDom";
+    const char* _password = "KZagaw01_ruter_key";
     ESP8266WebServer server;
     WebSocketsServer *webSocket;
     uint8_t clientConnected;
