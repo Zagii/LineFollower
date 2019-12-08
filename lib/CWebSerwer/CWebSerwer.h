@@ -13,8 +13,8 @@
 
 class CWebSerwer
 {
-    const char* _ssid = "DOrangeFreeDom";
-    const char* _password = "KZagaw01_ruter_key";
+    const char* _ssid = "InstalujWirusa";//DOrangeFreeDom";
+    const char* _password = "BlaBlaBla123";//"KZagaw01_ruter_key";
     ESP8266WebServer server;
     WebSocketsServer *webSocket;
     uint8_t clientConnected;

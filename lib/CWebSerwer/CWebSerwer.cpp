@@ -7,7 +7,7 @@ void webSocketEvent1(uint8_t num, WStype_t type, uint8_t * payload, size_t lengt
         
 }
 
-#define APDEF
+//#define APDEF
 void CWebSerwer::begin()
 {
 //  server= new ESP8266WebServer(80);

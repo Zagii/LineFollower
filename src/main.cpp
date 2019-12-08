@@ -30,9 +30,9 @@ int mLSpeed=0;
 int mPSpeed=0;
 int led=LOW;
 
-int Vmax=MAX_SPEED;
-double Kp=4.0;
-double Kd=6;
+int Vmax=400;
+double Kp=3.0;
+double Kd=1;
 double dp=0;
 double dd=0;
 int lastError=0;
@@ -107,13 +107,13 @@ void setup()
  Serial.println("...init ...");
 
 
-    digitalWrite(D5, HIGH);
+  /*  digitalWrite(D5, HIGH);
     digitalWrite(D7, HIGH);
     analogWrite(D6, 400);
     analogWrite(D8, 400);
   
      delay(3000);
-  
+  */
 
 // d8 in2EN   // d7 in1PH
 // d6 in2EN   // d5  in2PH
@@ -232,12 +232,12 @@ analogWrite(D8, mPSpeed);
 #define STOP 0
 #define LF 1
 #define MANUAL 2
-
+unsigned long msWolne=0;
 
 void loop()
 {
   loopTimeStart=millis();
- // delay(1);
+  delay(5);
   web.loop(millis(), "");
   position=analogRead(LF_PIN);
     if(position>lfMax)lfMax=position;
@@ -277,7 +277,26 @@ void loop()
       analogWrite(D8, mPSpeed);
       break;
   }
-  if(millis()-ms>350)
+  
+  if(millis()-msWolne>1000)
+  {
+    const size_t capacity = JSON_OBJECT_SIZE(13);
+    DynamicJsonDocument doc(capacity);
+    
+    doc["Kp"] = Kp;
+    doc["Kd"] = Kd;
+    doc["Vm"] = Vmax;
+    doc["LT"] = loopTime;
+    doc["T"] = tryb;
+    if(led==LOW)led=HIGH;else led=LOW;
+    String s="";
+    serializeJson(doc, s);
+    //Serial.println(s);
+    
+     web.sendWebSocket(s.c_str());
+    msWolne=millis();
+  }
+  if(millis()-ms>450)
   {
     /*String s="LoopTime: "+String(loopTime)+" ms";
     s+=" LFinp: "+String(position)+" ["+String(lfMin)+", "+String(lfMax)+"]";
@@ -287,9 +306,7 @@ void loop()
     const size_t capacity = JSON_OBJECT_SIZE(13);
     DynamicJsonDocument doc(capacity);
       //{"Kp":18.5,"Kd":2.4,"Vm":724,"Pos":277,"LE":170,"E":38,"dp":89,"dd":706,"sd":4,"L":122,"P":-849,"LT":481,"T":1}
-    doc["Kp"] = Kp;
-    doc["Kd"] = Kd;
-    doc["Vm"] = Vmax;
+    
     doc["Pos"] = position;
     doc["LE"] = lastError;
     doc["E"] = error;
@@ -298,14 +315,12 @@ void loop()
     doc["sd"] = speedDifference;
     doc["L"] = mLSpeed;
     doc["P"] = mPSpeed;
-    doc["LT"] = loopTime;
-    doc["T"] = tryb;
+    
 
     String s="";
     serializeJson(doc, s);
     //Serial.println(s);
-    if(led==LOW)led=HIGH;else led=LOW;
-  
+    
      web.sendWebSocket(s.c_str());
     ms=millis();
     
